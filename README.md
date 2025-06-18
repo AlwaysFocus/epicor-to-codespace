@@ -20,8 +20,9 @@ Downloads Epicor packages (DLLs and C# files) from your web application and sets
 
 1. A GitHub organization or personal account
 2. Your epicor environment accessible via URL
-3. GitHub Personal Access Token (PAT) with appropriate permissions
-4. GitHub repository to host this workflow
+3. Install BootStrapBill library in your environment (2023.2 or later unless you want to pull the code from the file and paste it in an older version which would also work)
+4. GitHub Personal Access Token (PAT) with appropriate permissions
+5. GitHub repository to host this workflow
 
 ## Setup Instructions
 
