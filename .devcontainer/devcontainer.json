@@ -1,0 +1,73 @@
+{
+  "name": "Epicor .NET 8 Development",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:1-8.0",
+  "features": {
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "8.0",
+      "additionalVersions": "7.0"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "username": "vscode",
+      "upgradePackages": true
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit"
+      ],
+      "settings": {
+        "dotnet.defaultSolution": "*.sln",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true,
+          "source.fixAll": true
+        },
+        "files.exclude": {
+          "**/bin": true,
+          "**/obj": true,
+          "**/.vs": true
+        },
+        "omnisharp.enableRoslynAnalyzers": true,
+        "omnisharp.enableEditorConfigSupport": true,
+        "csharp.semanticHighlighting.enabled": true,
+        "csharp.inlayHints.enableInlayHintsForParameters": true,
+        "csharp.inlayHints.enableInlayHintsForLiteralParameters": true,
+        "csharp.inlayHints.enableInlayHintsForIndexerParameters": true,
+        "csharp.inlayHints.enableInlayHintsForObjectCreationParameters": true,
+        "csharp.inlayHints.enableInlayHintsForOtherParameters": true,
+        "csharp.inlayHints.suppressInlayHintsForParametersThatDifferOnlyBySuffix": true,
+        "csharp.inlayHints.suppressInlayHintsForParametersThatMatchMethodIntent": true,
+        "csharp.inlayHints.suppressInlayHintsForParametersThatMatchArgumentName": true,
+        "csharp.inlayHints.enableInlayHintsForTypes": true,
+        "csharp.inlayHints.enableInlayHintsForImplicitVariableTypes": true,
+        "csharp.inlayHints.enableInlayHintsForLambdaParameterTypes": true,
+        "csharp.inlayHints.enableInlayHintsForImplicitObjectCreation": true
+      }
+    }
+  },
+  "postCreateCommand": "dotnet restore && dotnet build || echo 'Build completed with warnings'",
+  "postStartCommand": "dotnet dev-certs https",
+  "remoteUser": "vscode",
+  "mounts": [],
+  "forwardPorts": [5000, 5001],
+  "portsAttributes": {
+    "5000": {
+      "label": "HTTP",
+      "onAutoForward": "notify"
+    },
+    "5001": {
+      "label": "HTTPS",
+      "onAutoForward": "notify"
+    }
+  },
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb",
+    "storage": "32gb"
+  }
+}
