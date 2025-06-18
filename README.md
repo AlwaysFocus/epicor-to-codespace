@@ -1,6 +1,6 @@
 # Epicor GitHub Actions
 
-A comprehensive set of GitHub Actions workflows for automating Epicor ERP development tasks, including bidirectional synchronization between Epicor and GitHub repositories.
+A GitHub Actions workflow for automating Epicor ERP development tasks.
 
 ## Available Workflows
 
