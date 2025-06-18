@@ -1,0 +1,127 @@
+name: Epicor to Codespace Setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository_path:
+        description: 'Repository name or path (e.g., "myrepo" or "myrepo/subfolder")'
+        required: true
+        type: string
+      library_id:
+        description: 'Epicor Library ID (e.g., "Scribe")'
+        required: false
+        type: string
+        default: 'Scribe'
+  repository_dispatch:
+    types: [epicor-setup]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  setup-codespace:
+    runs-on: ubuntu-latest
+    outputs:
+      codespace_url: ${{ steps.create-codespace.outputs.url }}
+      repository_url: ${{ steps.setup-repo.outputs.repository_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Parse Repository Path
+        id: parse-path
+        run: |
+          REPO_PATH="${{ github.event.inputs.repository_path || github.event.client_payload.repository_path }}"
+          
+          # Validate input
+          if [[ ! "$REPO_PATH" =~ ^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$ ]]; then
+            echo "::error::Invalid repository path format. Use: 'repo' or 'repo/subfolder'"
+            exit 1
+          fi
+          
+          # Split path into repo and subfolder
+          if [[ "$REPO_PATH" == *"/"* ]]; then
+            REPO_NAME="${REPO_PATH%%/*}"
+            SUBFOLDER="${REPO_PATH#*/}"
+          else
+            REPO_NAME="$REPO_PATH"
+            SUBFOLDER=""
+          fi
+          
+          echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
+          echo "subfolder=$SUBFOLDER" >> $GITHUB_OUTPUT
+          echo "full_path=$REPO_PATH" >> $GITHUB_OUTPUT
+          echo "::notice::Repository: $REPO_NAME, Subfolder: $SUBFOLDER"
+      
+      - name: Download Epicor Package
+        id: download-epicor
+        env:
+          EPICOR_URL: ${{ secrets.EPICOR_URL }}
+          EPICOR_API_KEY: ${{ secrets.EPICOR_API_KEY }}
+          EPICOR_BASIC_AUTH: ${{ secrets.EPICOR_BASIC_AUTH }}
+        run: |
+          LIBRARY_ID="${{ github.event.inputs.library_id || github.event.client_payload.library_id || 'Scribe' }}"
+          echo "::notice::Downloading library: $LIBRARY_ID"
+          chmod +x scripts/download-epicor.sh
+          ./scripts/download-epicor.sh "$LIBRARY_ID"
+      
+      - name: Setup Repository
+        id: setup-repo
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          chmod +x scripts/setup-repository.sh
+          ./scripts/setup-repository.sh \
+            "${{ steps.parse-path.outputs.repo_name }}" \
+            "${{ steps.parse-path.outputs.subfolder }}"
+      
+      - name: Setup .NET 8 Project
+        id: setup-project
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          chmod +x scripts/setup-dotnet-project.sh
+          ./scripts/setup-dotnet-project.sh \
+            "${{ steps.parse-path.outputs.repo_name }}" \
+            "${{ steps.parse-path.outputs.subfolder }}"
+      
+      - name: Create or Update Codespace
+        id: create-codespace
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          chmod +x scripts/manage-codespace.sh
+          ./scripts/manage-codespace.sh \
+            "${{ steps.parse-path.outputs.repo_name }}"
+      
+      - name: Summary
+        run: |
+          echo "## 🚀 Epicor to Codespace Setup Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository**: [${{ steps.parse-path.outputs.repo_name }}](${{ steps.setup-repo.outputs.repository_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "**Project Path**: ${{ steps.parse-path.outputs.subfolder || 'root' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Codespace**: [Open in Codespace](${{ steps.create-codespace.outputs.url }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Package Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "- DLLs: ${{ steps.download-epicor.outputs.dll_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- C# Files: ${{ steps.download-epicor.outputs.cs_count }}" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Error Handler
+        if: failure()
+        run: |
+          echo "::error::Workflow failed at step: ${{ github.job }}"
+          echo "## ❌ Setup Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the workflow logs for details." >> $GITHUB_STEP_SUMMARY
+          
+          # Optional: Send webhook notification
+          if [ -n "${{ secrets.ERROR_WEBHOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.ERROR_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "workflow_run_id": "${{ github.run_id }}",
+                "repository_path": "${{ github.event.inputs.repository_path }}",
+                "error": "Workflow failed",
+                "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+              }'
+          fi
